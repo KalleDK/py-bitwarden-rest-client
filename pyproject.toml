@@ -52,3 +52,11 @@ pythonVersion = "3.14"
 [tool.ruff]
 line-length = 120
 target-version = "py314"
+
+[tool.unasyncd]
+files = { "src/bitwarden_rest_client/_async" = "src/bitwarden_rest_client/_sync"}
+
+[tool.unasyncd.add_replacements]
+AsyncBitwardenClient = "BitwardenClient"
+"httpx.AsyncClient" = "httpx.Client"
+"aclose" = "close"
