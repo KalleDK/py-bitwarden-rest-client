@@ -15,12 +15,20 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.12.2",
 ]
 
 [project.urls]
 Homepage = "https://github.com/KalleDK/py-bitwarden-rest-client"
 Documentation = "https://github.com/KalleDK/py-bitwarden-rest-client"
 Repository = "https://github.com/KalleDK/py-bitwarden-rest-client.git"
+
+[project.optional-dependencies]
+cli = [
+    "rich>=14.2.0",
+    "typer>=0.19.2",
+]
 
 [dependency-groups]
 test = [

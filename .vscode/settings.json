@@ -14,5 +14,6 @@
     "files.exclude": {
         "**/.*_cache": true
     },
-    "ruff.configuration": "pyproject.toml"
+    "ruff.configuration": "pyproject.toml",
+    "python.analysis.diagnosticMode": "workspace"
 }
