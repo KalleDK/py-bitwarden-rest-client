@@ -3,7 +3,7 @@ name = "bitwarden-rest-client"
 version = "0.1.3"
 description = "A rest client for the Bitwarden Cli API"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 authors = [
     {name = "Kalle M. Aagaard", email = "git@k-moeller.dk"},
 ]
@@ -12,7 +12,7 @@ maintainers = [
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "httpx>=0.28.1",
@@ -47,11 +47,11 @@ packages = ["src/bitwarden_rest_client"]
 include = ["src", "tests", "examples"]
 typeCheckingMode = "strict"
 exclude = ["**/__pycache__"]
-pythonVersion = "3.14"
+pythonVersion = "3.13"
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py313"
 
 [tool.unasyncd]
 files = { "src/bitwarden_rest_client/_async" = "src/bitwarden_rest_client/_sync"}

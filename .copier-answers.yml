@@ -5,5 +5,5 @@ full_name: Kalle M. Aagaard
 module_slug: bitwarden_rest_client
 project_description: A rest client for the Bitwarden Cli API
 project_name: Bitwarden Rest Client
-python_version: '3.14'
+python_version: '3.13'
 use_defaults: true
