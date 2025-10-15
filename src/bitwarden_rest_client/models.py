@@ -109,7 +109,7 @@ class LinkedType(enum.IntEnum):
 
 
 class UriMatch(pydantic.BaseModel, extra="forbid"):
-    match: URIMatch
+    match: URIMatch | None
     uri: str
 
 
