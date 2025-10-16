@@ -26,19 +26,23 @@ class DeleteResponse(pydantic.BaseModel, extra="forbid"):
 # region Lock / Unlock Models
 
 
-class LockResponse(pydantic.BaseModel, extra="forbid"):
+class ActionResponse(pydantic.BaseModel, extra="forbid"):
     noColor: bool
     object: str
     title: str
     message: str | None
 
 
-class UnlockResponse(pydantic.BaseModel, extra="forbid"):
-    noColor: bool
-    object: str
-    title: str
-    message: str
+class LockResponse(ActionResponse, extra="forbid"):
+    pass
+
+
+class UnlockResponse(ActionResponse, extra="forbid"):
     raw: str
+
+
+class SyncResponse(ActionResponse, extra="forbid"):
+    pass
 
 
 class UnlockPayload(pydantic.BaseModel):
@@ -47,6 +51,11 @@ class UnlockPayload(pydantic.BaseModel):
     @pydantic.field_serializer("password", when_used="json")
     def serialize_password(self, password: pydantic.SecretStr) -> str:
         return password.get_secret_value()
+
+
+class GeneratePasswordResponse(pydantic.BaseModel):
+    object: Literal["string"]
+    data: pydantic.SecretStr
 
 
 # endregion
@@ -156,6 +165,12 @@ class ItemLoginData(pydantic.BaseModel, extra="forbid"):
     totp: str | None = None
     passwordRevisionDate: datetime | None = pydantic.Field(default=None, alias="passwordRevisionDate", exclude=True)
 
+    @pydantic.field_serializer("password", when_used="json")
+    def serialize_password(self, password: pydantic.SecretStr | None) -> str | None:
+        if password is None:
+            return None
+        return password.get_secret_value()
+
 
 class ItemLogin(pydantic.BaseModel, extra="forbid"):
     object: Literal["item"] = pydantic.Field(exclude=True)
@@ -164,6 +179,7 @@ class ItemLogin(pydantic.BaseModel, extra="forbid"):
     folder_id: FolderID | None = pydantic.Field(alias="folderId")
     organization_id: OrgID | None = pydantic.Field(alias="organizationId")
     collection_ids: list[CollectionID] | None = pydantic.Field(default=None, alias="collectionIds")
+    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
     creation_date: datetime = pydantic.Field(alias="creationDate")
     revision_date: datetime = pydantic.Field(alias="revisionDate")
     deleted_date: datetime | None = pydantic.Field(alias="deletedDate")

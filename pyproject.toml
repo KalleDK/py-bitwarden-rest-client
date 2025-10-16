@@ -30,6 +30,9 @@ cli = [
     "typer>=0.19.2",
 ]
 
+[project.scripts]
+bw-rest = "bitwarden_rest_client.cli.app:main"
+
 [dependency-groups]
 test = [
     "pytest>=8.4.2",

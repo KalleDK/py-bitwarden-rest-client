@@ -1,5 +1,4 @@
 import contextlib
-import json
 import logging
 from typing import Any
 
@@ -12,6 +11,7 @@ from bitwarden_rest_client.models import (
     Folder,
     FolderID,
     FolderNew,
+    GeneratePasswordResponse,
     ItemID,
     ItemLoginNew,
     Items,
@@ -19,6 +19,7 @@ from bitwarden_rest_client.models import (
     LockResponse,
     OrgID,
     Response,
+    SyncResponse,
     UnlockPayload,
     UnlockResponse,
 )
@@ -41,7 +42,7 @@ class AsyncBitwardenClient:
         if payload is None:
             return None
         obj = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
-        print(json.dumps(obj, indent=2))  # DEBUG
+
         return obj
 
     @classmethod
@@ -107,6 +108,30 @@ class AsyncBitwardenClient:
     async def unlock(self, password: pydantic.SecretStr):
         payload = UnlockPayload(password=password)
         return await self._post(UnlockResponse, "/unlock", payload=payload)
+
+    async def sync(self):
+        return await self._post(SyncResponse, "/sync")
+
+    async def generate_password(
+        self,
+        length: int = 20,
+        uppercase: bool = True,
+        lowercase: bool = True,
+        numbers: bool = True,
+        special: bool = False,
+    ) -> pydantic.SecretStr:
+        params = httpx.QueryParams()
+        params = params.set("length", str(length))
+        if uppercase:
+            params = params.set("uppercase", "true")
+        if lowercase:
+            params = params.set("lowercase", "true")
+        if numbers:
+            params = params.set("numbers", "true")
+        if special:
+            params = params.set("special", "true")
+        response = await self._get(GeneratePasswordResponse, "/generate", params=params)
+        return response.data
 
     # endregion
 
