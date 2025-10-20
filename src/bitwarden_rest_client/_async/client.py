@@ -170,6 +170,9 @@ class AsyncBitwardenClient:
     async def item_get(self, item_id: ItemID) -> Items:
         return await self._get(Items, f"/object/item/{item_id}")  # type: ignore[arg-type]
 
+    async def item_update(self, item: Items) -> Items:
+        return await self._put(Items, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
+
     async def item_list(
         self,
         org_id: OrgID | None = None,
