@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 
 from bitwarden_rest_client._sync.client import BitwardenClient
-from bitwarden_rest_client.models import ItemLoginData, ItemLoginNew, URIMatch, UriMatch
+from bitwarden_rest_client.models import FieldHidden, ItemLoginData, ItemLoginNew, URIMatch, UriMatch
 
 app = typer.Typer()
 console = Console()
@@ -155,6 +155,18 @@ def login_create(
         if sync:
             response = session.sync()
             console.print(response)
+
+
+@login_group.command("update")
+def login_update(name: str):
+    with BitwardenClient.session() as session:
+        items = session.item_list(url="ssh://root@certmgr.krypto.dk")
+        item = items[0]
+        if item.fields is None:
+            item.fields = []
+        item.fields.append(FieldHidden(name="updated", value=pydantic.SecretStr("true")))
+        response = session.item_update(item)
+        console.print(response)
 
 
 # endregion

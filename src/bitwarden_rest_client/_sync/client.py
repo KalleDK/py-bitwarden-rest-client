@@ -71,6 +71,7 @@ class BitwardenClient:
         return response_data.data
 
     def _put[T: pydantic.BaseModel](self, cls: type[T], path: str, payload: pydantic.BaseModel | None = None) -> T:
+        print(self._payload_to_json(payload))
         response = self._client.put(path, json=self._payload_to_json(payload))
         response.raise_for_status()
         response_data = Response[cls].model_validate_json(response.text)
@@ -165,6 +166,9 @@ class BitwardenClient:
 
     def item_get(self, item_id: ItemID) -> Items:
         return self._get(Items, f"/object/item/{item_id}")  # type: ignore[arg-type]
+
+    def item_update(self, item: Items) -> Items:
+        return self._put(Items, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
 
     def item_list(
         self,

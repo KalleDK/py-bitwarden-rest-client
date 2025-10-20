@@ -126,6 +126,12 @@ class PasswordHistory(pydantic.BaseModel, extra="forbid"):
     last_used: datetime = pydantic.Field(alias="lastUsedDate")
     password: pydantic.SecretStr
 
+    @pydantic.field_serializer("password", when_used="json")
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        return value.get_secret_value()
+
 
 class FieldText(pydantic.BaseModel, extra="forbid"):
     type: Literal[FieldType.text] = pydantic.Field(exclude=True)
@@ -135,10 +141,16 @@ class FieldText(pydantic.BaseModel, extra="forbid"):
 
 
 class FieldHidden(pydantic.BaseModel, extra="forbid"):
-    type: Literal[FieldType.hidden] = pydantic.Field(exclude=True)
+    type: Literal[FieldType.hidden] = pydantic.Field(default=FieldType.hidden)
     name: str
     value: pydantic.SecretStr
-    linkedId: None
+    linkedId: None = None
+
+    @pydantic.field_serializer("value", when_used="json")
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        return value.get_secret_value()
 
 
 class FieldCheckbox(pydantic.BaseModel, extra="forbid"):
@@ -166,30 +178,30 @@ class ItemLoginData(pydantic.BaseModel, extra="forbid"):
     passwordRevisionDate: datetime | None = pydantic.Field(default=None, alias="passwordRevisionDate", exclude=True)
 
     @pydantic.field_serializer("password", when_used="json")
-    def serialize_password(self, password: pydantic.SecretStr | None) -> str | None:
-        if password is None:
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
             return None
-        return password.get_secret_value()
+        return value.get_secret_value()
 
 
 class ItemLogin(pydantic.BaseModel, extra="forbid"):
     object: Literal["item"] = pydantic.Field(exclude=True)
-    type: Literal[ItemType.login] = pydantic.Field(exclude=True)
+    type: Literal[ItemType.login]
     id: ItemID = pydantic.Field(exclude=True)
     folder_id: FolderID | None = pydantic.Field(alias="folderId")
     organization_id: OrgID | None = pydantic.Field(alias="organizationId")
     collection_ids: list[CollectionID] | None = pydantic.Field(default=None, alias="collectionIds")
     attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
-    creation_date: datetime = pydantic.Field(alias="creationDate")
-    revision_date: datetime = pydantic.Field(alias="revisionDate")
-    deleted_date: datetime | None = pydantic.Field(alias="deletedDate")
+    creation_date: datetime = pydantic.Field(alias="creationDate", exclude=True)
+    revision_date: datetime = pydantic.Field(alias="revisionDate", exclude=True)
+    deleted_date: datetime | None = pydantic.Field(alias="deletedDate", exclude=True)
     name: str
     login: ItemLoginData
     notes: str | None
     fields: list[Fields] | None = None
     reprompt: bool
     favorite: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory")
+    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory", exclude=True)
 
     @pydantic.field_serializer("reprompt", when_used="json")
     def serialize_reprompt(self, value: bool) -> int:
@@ -209,6 +221,7 @@ class ItemSecureNote(pydantic.BaseModel, extra="forbid"):
     id: ItemID = pydantic.Field(exclude=True)
     folder_id: FolderID | None = pydantic.Field(alias="folderId")
     organization_id: OrgID | None = pydantic.Field(alias="organizationId")
+    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
     collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
     creation_date: datetime = pydantic.Field(alias="creationDate")
     revision_date: datetime = pydantic.Field(alias="revisionDate")
@@ -228,6 +241,12 @@ class Card(pydantic.BaseModel, extra="forbid"):
     exp_month: int | None = pydantic.Field(alias="expMonth")
     exp_year: int | None = pydantic.Field(alias="expYear")
     code: pydantic.SecretStr | None
+
+    @pydantic.field_serializer("number", "code", when_used="json")
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        return value.get_secret_value()
 
 
 class ItemCard(pydantic.BaseModel, extra="forbid"):
