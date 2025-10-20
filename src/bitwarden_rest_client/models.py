@@ -134,10 +134,10 @@ class PasswordHistory(pydantic.BaseModel, extra="forbid"):
 
 
 class FieldText(pydantic.BaseModel, extra="forbid"):
-    type: Literal[FieldType.text] = pydantic.Field(exclude=True)
+    type: Literal[FieldType.text] = pydantic.Field(default=FieldType.text)
     name: str
     value: str
-    linkedId: None
+    linkedId: None = None
 
 
 class FieldHidden(pydantic.BaseModel, extra="forbid"):
@@ -154,16 +154,16 @@ class FieldHidden(pydantic.BaseModel, extra="forbid"):
 
 
 class FieldCheckbox(pydantic.BaseModel, extra="forbid"):
-    type: Literal[FieldType.checkbox] = pydantic.Field(exclude=True)
+    type: Literal[FieldType.checkbox] = pydantic.Field(default=FieldType.checkbox)
     name: str
     value: bool
-    linkedId: None
+    linkedId: None = None
 
 
 class FieldLinked(pydantic.BaseModel, extra="forbid"):
-    type: Literal[FieldType.linked] = pydantic.Field(exclude=True)
+    type: Literal[FieldType.linked] = pydantic.Field(default=FieldType.linked)
     name: str
-    value: None
+    value: None = None
     linkedId: LinkedType
 
 
