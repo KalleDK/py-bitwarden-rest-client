@@ -94,6 +94,7 @@ class ItemType(enum.IntEnum):
     secure_note = 2
     card = 3
     identity = 4
+    ssh = 5
 
 
 class URIMatch(enum.IntEnum):
@@ -309,7 +310,35 @@ class ItemIdentity(pydantic.BaseModel, extra="forbid"):
     password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory")
 
 
-Items = Annotated[Union[ItemLogin, ItemSecureNote, ItemCard, ItemIdentity], pydantic.Field(discriminator="type")]
+class SSHKey(pydantic.BaseModel, extra="forbid"):
+    private_key: pydantic.SecretStr = pydantic.Field(alias="privateKey")
+    public_key: str = pydantic.Field(alias="publicKey")
+    fingerprint: str = pydantic.Field(alias="keyFingerprint")
+
+
+class ItemSSH(pydantic.BaseModel, extra="forbid"):
+    object: Literal["item"] = pydantic.Field(exclude=True)
+    type: Literal[ItemType.ssh] = pydantic.Field(exclude=True)
+    id: ItemID = pydantic.Field(exclude=True)
+    folder_id: FolderID | None = pydantic.Field(alias="folderId")
+    organization_id: OrgID | None = pydantic.Field(default=None, alias="organizationId")
+    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
+    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
+    creation_date: datetime = pydantic.Field(alias="creationDate")
+    revision_date: datetime = pydantic.Field(alias="revisionDate")
+    deleted_date: datetime | None = pydantic.Field(default=None, alias="deletedDate")
+    name: str
+    ssh_key: SSHKey = pydantic.Field(alias="sshKey")
+    notes: str | None
+    fields: list[Fields] | None = None
+    favorite: bool
+    reprompt: bool
+    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory", exclude=True)
+
+
+Items = Annotated[
+    Union[ItemLogin, ItemSecureNote, ItemCard, ItemIdentity, ItemSSH], pydantic.Field(discriminator="type")
+]
 
 
 class ItemLoginNew(pydantic.BaseModel):
