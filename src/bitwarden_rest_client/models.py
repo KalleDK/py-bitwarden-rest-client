@@ -176,6 +176,7 @@ class ItemLoginData(pydantic.BaseModel, extra="forbid"):
     password: pydantic.SecretStr | None = None
     totp: str | None = None
     passwordRevisionDate: datetime | None = pydantic.Field(default=None, alias="passwordRevisionDate", exclude=True)
+    fido2credentials: list[Any] = pydantic.Field(alias="fido2Credentials", default_factory=list[Any], exclude=True)
 
     @pydantic.field_serializer("password", when_used="json")
     def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
@@ -189,12 +190,12 @@ class ItemLogin(pydantic.BaseModel, extra="forbid"):
     type: Literal[ItemType.login]
     id: ItemID = pydantic.Field(exclude=True)
     folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(alias="organizationId")
+    organization_id: OrgID | None = pydantic.Field(default=None, alias="organizationId")
     collection_ids: list[CollectionID] | None = pydantic.Field(default=None, alias="collectionIds")
     attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
     creation_date: datetime = pydantic.Field(alias="creationDate", exclude=True)
     revision_date: datetime = pydantic.Field(alias="revisionDate", exclude=True)
-    deleted_date: datetime | None = pydantic.Field(alias="deletedDate", exclude=True)
+    deleted_date: datetime | None = pydantic.Field(default=None, alias="deletedDate", exclude=True)
     name: str
     login: ItemLoginData
     notes: str | None
