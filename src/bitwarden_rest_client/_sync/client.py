@@ -1,10 +1,12 @@
 import contextlib
+import dataclasses
 import logging
 from typing import Any
 
 import httpx
 import pydantic
 
+from bitwarden_rest_client.consts import DEFAULT_BASEURL
 from bitwarden_rest_client.models import (
     CollectionID,
     DeleteResponse,
@@ -27,15 +29,11 @@ from bitwarden_rest_client.models import (
 _log = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass
 class BitwardenClient:
-    _client: httpx.Client
+    client: httpx.Client
 
     # region Init / Dispose
-
-    def __init__(self, base_url: str | None = None):
-        if base_url is None:
-            base_url = "http://localhost:8087"
-        self._client = httpx.Client(base_url=base_url)
 
     @staticmethod
     def _payload_to_json(payload: pydantic.BaseModel | None) -> Any:
@@ -48,14 +46,15 @@ class BitwardenClient:
     @classmethod
     @contextlib.contextmanager
     def session(cls, base_url: str | None = None):
-        client = cls(base_url=base_url)
+        base_url = base_url if base_url is not None else DEFAULT_BASEURL
+        client = cls(client=httpx.Client(base_url=base_url))
         try:
             yield client
         finally:
             client.close()
 
     def close(self):
-        self._client.close()
+        self.client.close()
 
     # endregion
 
@@ -63,7 +62,7 @@ class BitwardenClient:
 
     def _get[T: pydantic.BaseModel](self, cls: type[T], path: str, params: httpx.QueryParams | None = None) -> T:
         _log.debug("Params: %s", params)
-        response = self._client.get(path, params=params)
+        response = self.client.get(path, params=params)
         response.raise_for_status()
         response_data = Response[cls].model_validate_json(response.text)
         if not response_data.success:
@@ -71,7 +70,7 @@ class BitwardenClient:
         return response_data.data
 
     def _put[T: pydantic.BaseModel](self, cls: type[T], path: str, payload: pydantic.BaseModel | None = None) -> T:
-        response = self._client.put(path, json=self._payload_to_json(payload))
+        response = self.client.put(path, json=self._payload_to_json(payload))
         response.raise_for_status()
         response_data = Response[cls].model_validate_json(response.text)
         if not response_data.success:
@@ -79,7 +78,7 @@ class BitwardenClient:
         return response_data.data
 
     def _post[T: pydantic.BaseModel](self, cls: type[T], path: str, payload: pydantic.BaseModel | None = None) -> T:
-        response = self._client.post(path, json=self._payload_to_json(payload))
+        response = self.client.post(path, json=self._payload_to_json(payload))
         response.raise_for_status()
         response_data = Response[cls].model_validate_json(response.text)
         if not response_data.success:
@@ -87,7 +86,7 @@ class BitwardenClient:
         return response_data.data
 
     def _delete(self, path: str) -> bool:
-        response = self._client.delete(path)
+        response = self.client.delete(path)
         response.raise_for_status()
         response_data = DeleteResponse.model_validate_json(response.text)
         if not response_data.success:

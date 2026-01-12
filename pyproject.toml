@@ -29,6 +29,9 @@ cli = [
     "rich>=14.2.0",
     "typer>=0.19.2",
 ]
+server = [
+    "quart>=0.20.0",
+]
 
 [project.scripts]
 bw-rest = "bitwarden_rest_client.cli.app:main"
