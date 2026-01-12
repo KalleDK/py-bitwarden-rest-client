@@ -17,6 +17,7 @@ from bitwarden_rest_client.models import (
     ItemID,
     ItemLoginNew,
     Items,
+    ItemType,
     ListResponse,
     LockResponse,
     OrgID,
@@ -174,6 +175,7 @@ class BitwardenClient:
         collection_id: CollectionID | None = None,
         folder_id: FolderID | None = None,
         url: str | None = None,
+        item_type: ItemType | None = None,
         trash: bool = False,
         search: str | None = None,
     ) -> list[Items]:
@@ -191,6 +193,9 @@ class BitwardenClient:
         if search is not None:
             params = params.set("search", search)
         response = self._get(ListResponse[Items], "/list/object/items", params=params)
-        return response.data
+        items = response.data
+        if item_type is not None:
+            items = [item for item in items if item.type == item_type]
+        return items
 
     # endregion
