@@ -1,4 +1,4 @@
-__version__ = "0.1.16"
+__version__ = "0.1.17"
 
 from ._async.client import AsyncBitwardenClient
 from ._sync.client import BitwardenClient

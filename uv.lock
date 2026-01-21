@@ -34,7 +34,7 @@ wheels = [
 
 [[package]]
 name = "bitwarden-rest-client"
-version = "0.1.16"
+version = "0.1.17"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -67,7 +67,7 @@ provides-extras = ["cli", "server"]
 
 [package.metadata.requires-dev]
 stubs = []
-test = [{ name = "pytest", specifier = ">=9.0.0" }]
+test = [{ name = "pytest", specifier = ">=9.0" }]
 
 [[package]]
 name = "blinker"
