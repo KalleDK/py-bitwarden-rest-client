@@ -184,6 +184,34 @@ class FieldLinked(BaseStrictModel):
 Fields = Annotated[Union[FieldText, FieldHidden, FieldCheckbox, FieldLinked], pydantic.Field(discriminator="type")]
 
 
+class NewItemBase(BaseStrictModel):
+    name: str
+    folder_id: FolderID | None = pydantic.Field(
+        default=None, serialization_alias="folderId", validation_alias="folderId"
+    )
+    organization_id: OrgID | None = pydantic.Field(
+        default=None, serialization_alias="organizationId", validation_alias="organizationId"
+    )
+    collection_ids: list[CollectionID] | None = pydantic.Field(
+        default=None, serialization_alias="collectionIds", validation_alias="collectionIds"
+    )
+
+    notes: str | None = None
+    fields: list[Fields] | None = None
+    reprompt: bool = False
+    favorite: bool = False
+
+    @pydantic.field_serializer("reprompt", when_used="json")
+    def serialize_reprompt(self, value: bool) -> int:
+        return 1 if value else 0
+
+    @pydantic.field_validator("reprompt", mode="before")
+    def validate_reprompt(cls, value: int | bool) -> bool:
+        if isinstance(value, bool):
+            return value
+        return value == 1
+
+
 class ItemBase(BaseStrictModel):
     object: Literal["item"] = pydantic.Field(exclude=True)
     id: ItemID = pydantic.Field(exclude=True)
@@ -229,11 +257,24 @@ class ItemBase(BaseStrictModel):
     )  # I don't think this makes sense, but all types seem to have it
 
 
-class LoginData(BaseStrictModel):
-    uris: list[UriMatch] | None = None
+class NewLoginData(BaseStrictModel):
     username: str | None = None
     password: pydantic.SecretStr | None = None
     totp: str | None = None
+    uris: list[UriMatch] | None = None
+
+    @pydantic.field_serializer("password", when_used="json")
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        return value.get_secret_value()
+
+
+class LoginData(BaseStrictModel):
+    username: str | None = None
+    password: pydantic.SecretStr | None = None
+    totp: str | None = None
+    uris: list[UriMatch] | None = None
     passwordRevisionDate: datetime | None = pydantic.Field(
         default=None, serialization_alias="passwordRevisionDate", validation_alias="passwordRevisionDate", exclude=True
     )
@@ -251,7 +292,12 @@ class LoginData(BaseStrictModel):
         return value.get_secret_value()
 
 
-class ItemLogin(ItemBase):
+class NewLogin(NewItemBase):
+    type: Literal[ItemType.login] = ItemType.login
+    login: NewLoginData
+
+
+class Login(ItemBase):
     type: Literal[ItemType.login]
     login: LoginData
 
@@ -259,13 +305,26 @@ class ItemLogin(ItemBase):
 class SecureNoteData(BaseStrictModel):
     type: SecureNoteType
 
+    @classmethod
+    def generic(cls) -> "SecureNoteData":
+        return cls(type=SecureNoteType.generic)
 
-class ItemSecureNote(ItemBase):
+
+class NewSecureNote(NewItemBase):
+    type: Literal[ItemType.secure_note] = ItemType.secure_note
+    secure_note: SecureNoteData = pydantic.Field(
+        default_factory=SecureNoteData.generic,
+        serialization_alias="secureNote",
+        validation_alias="secureNote",
+    )
+
+
+class SecureNote(ItemBase):
     type: Literal[ItemType.secure_note] = pydantic.Field(exclude=True)
-    secureNote: SecureNoteData = pydantic.Field(serialization_alias="secureNote", validation_alias="secureNote")
+    secure_note: SecureNoteData = pydantic.Field(serialization_alias="secureNote", validation_alias="secureNote")
 
 
-class Card(BaseStrictModel):
+class CardData(BaseStrictModel):
     cardholder_name: str | None = pydantic.Field(
         serialization_alias="cardholderName", validation_alias="cardholderName"
     )
@@ -282,12 +341,17 @@ class Card(BaseStrictModel):
         return value.get_secret_value()
 
 
-class ItemCard(ItemBase):
+class NewCard(NewItemBase):
+    type: Literal[ItemType.card] = ItemType.card
+    card: CardData
+
+
+class Card(ItemBase):
     type: Literal[ItemType.card] = pydantic.Field(exclude=True)
-    card: Card = pydantic.Field(serialization_alias="card", validation_alias="card")
+    card: CardData
 
 
-class Identity(BaseStrictModel):
+class IdentityData(BaseStrictModel):
     first_name: str | None = pydantic.Field(serialization_alias="firstName", validation_alias="firstName")
     middle_name: str | None = pydantic.Field(serialization_alias="middleName", validation_alias="middleName")
     last_name: str | None = pydantic.Field(serialization_alias="lastName", validation_alias="lastName")
@@ -310,55 +374,36 @@ class Identity(BaseStrictModel):
     license_number: str | None = pydantic.Field(serialization_alias="licenseNumber", validation_alias="licenseNumber")
 
 
-class ItemIdentity(ItemBase):
+class NewIdentity(NewItemBase):
+    type: Literal[ItemType.identity] = ItemType.identity
+    identity: IdentityData
+
+
+class Identity(ItemBase):
     type: Literal[ItemType.identity] = pydantic.Field(exclude=True)
-    identity: Identity = pydantic.Field(serialization_alias="identity", validation_alias="identity")
+    identity: IdentityData
 
 
-class SSHKey(BaseStrictModel):
+class SSHKeyData(BaseStrictModel):
     private_key: pydantic.SecretStr = pydantic.Field(serialization_alias="privateKey", validation_alias="privateKey")
     public_key: str = pydantic.Field(serialization_alias="publicKey", validation_alias="publicKey")
     fingerprint: str = pydantic.Field(serialization_alias="keyFingerprint", validation_alias="keyFingerprint")
 
 
-class ItemSSH(ItemBase):
+class NewSSHKey(NewItemBase):
+    type: Literal[ItemType.ssh] = ItemType.ssh
+    ssh_key: SSHKeyData = pydantic.Field(serialization_alias="sshKey", validation_alias="sshKey")
+
+
+class SSHKey(ItemBase):
     type: Literal[ItemType.ssh] = pydantic.Field(exclude=True)
+    ssh_key: SSHKeyData = pydantic.Field(serialization_alias="sshKey", validation_alias="sshKey")
 
-    ssh_key: SSHKey = pydantic.Field(serialization_alias="sshKey", validation_alias="sshKey")
 
+Item = Annotated[Union[Login, SecureNote, Card, Identity, SSHKey], pydantic.Field(discriminator="type")]
 
-Item = Annotated[
-    Union[ItemLogin, ItemSecureNote, ItemCard, ItemIdentity, ItemSSH], pydantic.Field(discriminator="type")
+NewItem = Annotated[
+    Union[NewLogin, NewSecureNote, NewCard, NewIdentity, NewSSHKey], pydantic.Field(discriminator="type")
 ]
-
-
-class ItemLoginNew(pydantic.BaseModel):
-    type: Literal[ItemType.login] = ItemType.login
-    name: str
-    folder_id: FolderID | None = pydantic.Field(
-        default=None, serialization_alias="folderId", validation_alias="folderId"
-    )
-    organization_id: OrgID | None = pydantic.Field(
-        serialization_alias="organizationId", validation_alias="organizationId", default=None
-    )
-    collection_ids: list[CollectionID] | None = pydantic.Field(
-        serialization_alias="collectionIds", validation_alias="collectionIds", default=None
-    )
-    login: LoginData
-    notes: str | None = None
-    fields: list[Fields] | None = None
-    reprompt: bool = False
-    favorite: bool = False
-
-    @pydantic.field_serializer("reprompt", when_used="json")
-    def serialize_reprompt(self, value: bool) -> int:
-        return 1 if value else 0
-
-    @pydantic.field_validator("reprompt", mode="before")
-    def validate_reprompt(cls, value: int | bool) -> bool:
-        if isinstance(value, bool):
-            return value
-        return value == 1
-
 
 # endregion

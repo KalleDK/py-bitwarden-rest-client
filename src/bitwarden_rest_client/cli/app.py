@@ -6,7 +6,15 @@ import typer
 from rich.console import Console
 
 from bitwarden_rest_client._sync.client import BitwardenClient
-from bitwarden_rest_client.models import FieldHidden, FolderID, ItemLoginNew, ItemType, LoginData, URIMatch, UriMatch
+from bitwarden_rest_client.models import (
+    FieldHidden,
+    FolderID,
+    ItemType,
+    NewLogin,
+    NewLoginData,
+    URIMatch,
+    UriMatch,
+)
 
 app = typer.Typer()
 console = Console()
@@ -148,9 +156,9 @@ def login_create(
         else:
             _password = None
         response = session.item_create(
-            ItemLoginNew(
+            NewLogin(
                 name=name,
-                login=LoginData(
+                login=NewLoginData(
                     username=username,
                     password=_password,
                     uris=uris,
@@ -183,9 +191,9 @@ def login_update(name: str):
 
 
 @app.command()
-def item(search: Annotated[str | None, typer.Argument()] = None):
+def item(search: Annotated[str | None, typer.Argument()] = None, url: str | None = None):
     with BitwardenClient.session() as session:
-        response = session.item_list(search=search)
+        response = session.item_list(search=search, url=url)
         console.print(response)
 
 
