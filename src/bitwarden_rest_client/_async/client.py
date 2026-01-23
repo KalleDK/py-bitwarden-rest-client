@@ -14,9 +14,9 @@ from bitwarden_rest_client.models import (
     FolderID,
     FolderNew,
     GeneratePasswordResponse,
+    Item,
     ItemID,
     ItemLoginNew,
-    Items,
     ItemType,
     ListResponse,
     LockResponse,
@@ -161,17 +161,21 @@ class AsyncBitwardenClient:
 
     # region Items
 
-    async def item_create(self, item: ItemLoginNew) -> Items:
-        return await self._post(Items, "/object/item", payload=item)  # type: ignore[arg-type]
+    async def item_create(self, item: ItemLoginNew) -> Item:
+        return await self._post(Item, "/object/item", payload=item)  # type: ignore[arg-type]
 
-    async def item_delete(self, item_id: ItemID) -> bool:
+    async def item_delete(self, item_id: ItemID | Item) -> bool:
+        if not isinstance(item_id, str):
+            item_id = item_id.id
         return await self._delete(f"/object/item/{item_id}")  # type: ignore[arg-type]
 
-    async def item_get(self, item_id: ItemID) -> Items:
-        return await self._get(Items, f"/object/item/{item_id}")  # type: ignore[arg-type]
+    async def item_get(self, item_id: ItemID | Item) -> Item:
+        if not isinstance(item_id, str):
+            item_id = item_id.id
+        return await self._get(Item, f"/object/item/{item_id}")  # type: ignore[arg-type]
 
-    async def item_update(self, item: Items) -> Items:
-        return await self._put(Items, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
+    async def item_update(self, item: Item) -> Item:
+        return await self._put(Item, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
 
     async def item_list(
         self,
@@ -182,7 +186,7 @@ class AsyncBitwardenClient:
         item_type: ItemType | None = None,
         trash: bool = False,
         search: str | None = None,
-    ) -> list[Items]:
+    ) -> list[Item]:
         params = httpx.QueryParams()
         if org_id is not None:
             params = params.set("organizationId", org_id)
@@ -196,7 +200,7 @@ class AsyncBitwardenClient:
             params = params.set("trash", "true")
         if search is not None:
             params = params.set("search", search)
-        response = await self._get(ListResponse[Items], "/list/object/items", params=params)
+        response = await self._get(ListResponse[Item], "/list/object/items", params=params)
         items = response.data
         if item_type is not None:
             items = [item for item in items if item.type == item_type]

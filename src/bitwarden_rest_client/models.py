@@ -4,6 +4,15 @@ from typing import Annotated, Any, Literal, NewType, Union
 
 import pydantic
 
+
+class BaseLooseModel(pydantic.BaseModel, validate_by_name=True, validate_by_alias=True, serialize_by_alias=True):
+    pass
+
+
+class BaseStrictModel(BaseLooseModel, extra="forbid"):
+    pass
+
+
 # region API Models
 
 
@@ -17,7 +26,7 @@ class ListResponse[T](pydantic.BaseModel):
     data: list[T]
 
 
-class DeleteResponse(pydantic.BaseModel, extra="forbid"):
+class DeleteResponse(BaseStrictModel):
     success: bool
 
 
@@ -26,26 +35,26 @@ class DeleteResponse(pydantic.BaseModel, extra="forbid"):
 # region Lock / Unlock Models
 
 
-class ActionResponse(pydantic.BaseModel, extra="forbid"):
+class ActionResponse(BaseStrictModel):
     noColor: bool
     object: str
     title: str
     message: str | None
 
 
-class LockResponse(ActionResponse, extra="forbid"):
+class LockResponse(ActionResponse):
     pass
 
 
-class UnlockResponse(ActionResponse, extra="forbid"):
+class UnlockResponse(ActionResponse):
     raw: str
 
 
-class SyncResponse(ActionResponse, extra="forbid"):
+class SyncResponse(ActionResponse):
     pass
 
 
-class UnlockPayload(pydantic.BaseModel):
+class UnlockPayload(BaseStrictModel):
     password: pydantic.SecretStr
 
     @pydantic.field_serializer("password", when_used="json")
@@ -53,7 +62,7 @@ class UnlockPayload(pydantic.BaseModel):
         return password.get_secret_value()
 
 
-class GeneratePasswordResponse(pydantic.BaseModel):
+class GeneratePasswordResponse(BaseStrictModel):
     object: Literal["string"]
     data: pydantic.SecretStr
 
@@ -65,13 +74,13 @@ class GeneratePasswordResponse(pydantic.BaseModel):
 FolderID = NewType("FolderID", str)
 
 
-class Folder(pydantic.BaseModel):
+class Folder(BaseStrictModel):
     object: Literal["folder"] = pydantic.Field(exclude=True)
     name: str
     id: FolderID | None = pydantic.Field(exclude=True)
 
 
-class FolderNew(pydantic.BaseModel):
+class FolderNew(BaseStrictModel):
     name: str
 
 
@@ -97,6 +106,10 @@ class ItemType(enum.IntEnum):
     ssh = 5
 
 
+class SecureNoteType(enum.IntEnum):
+    generic = 0  # This is a guess based on Bitwarden's API documentation
+
+
 class URIMatch(enum.IntEnum):
     base_domain = 0
     host = 1
@@ -118,13 +131,13 @@ class LinkedType(enum.IntEnum):
     password = 101
 
 
-class UriMatch(pydantic.BaseModel, extra="forbid"):
+class UriMatch(BaseStrictModel):
     match: URIMatch | None = None
     uri: str
 
 
-class PasswordHistory(pydantic.BaseModel, extra="forbid"):
-    last_used: datetime = pydantic.Field(alias="lastUsedDate")
+class PasswordHistory(BaseStrictModel):
+    last_used: datetime = pydantic.Field(serialization_alias="lastUsedDate", validation_alias="lastUsedDate")
     password: pydantic.SecretStr
 
     @pydantic.field_serializer("password", when_used="json")
@@ -134,14 +147,14 @@ class PasswordHistory(pydantic.BaseModel, extra="forbid"):
         return value.get_secret_value()
 
 
-class FieldText(pydantic.BaseModel, extra="forbid"):
+class FieldText(BaseStrictModel):
     type: Literal[FieldType.text] = pydantic.Field(default=FieldType.text)
     name: str
     value: str
     linkedId: None = None
 
 
-class FieldHidden(pydantic.BaseModel, extra="forbid"):
+class FieldHidden(BaseStrictModel):
     type: Literal[FieldType.hidden] = pydantic.Field(default=FieldType.hidden)
     name: str
     value: pydantic.SecretStr
@@ -154,14 +167,14 @@ class FieldHidden(pydantic.BaseModel, extra="forbid"):
         return value.get_secret_value()
 
 
-class FieldCheckbox(pydantic.BaseModel, extra="forbid"):
+class FieldCheckbox(BaseStrictModel):
     type: Literal[FieldType.checkbox] = pydantic.Field(default=FieldType.checkbox)
     name: str
     value: bool
     linkedId: None = None
 
 
-class FieldLinked(pydantic.BaseModel, extra="forbid"):
+class FieldLinked(BaseStrictModel):
     type: Literal[FieldType.linked] = pydantic.Field(default=FieldType.linked)
     name: str
     value: None = None
@@ -171,39 +184,35 @@ class FieldLinked(pydantic.BaseModel, extra="forbid"):
 Fields = Annotated[Union[FieldText, FieldHidden, FieldCheckbox, FieldLinked], pydantic.Field(discriminator="type")]
 
 
-class ItemLoginData(pydantic.BaseModel, extra="forbid"):
-    uris: list[UriMatch] | None = None
-    username: str | None = None
-    password: pydantic.SecretStr | None = None
-    totp: str | None = None
-    passwordRevisionDate: datetime | None = pydantic.Field(default=None, alias="passwordRevisionDate", exclude=True)
-    fido2credentials: list[Any] = pydantic.Field(alias="fido2Credentials", default_factory=list[Any], exclude=True)
-
-    @pydantic.field_serializer("password", when_used="json")
-    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
-        if value is None:
-            return None
-        return value.get_secret_value()
-
-
-class ItemLogin(pydantic.BaseModel, extra="forbid"):
+class ItemBase(BaseStrictModel):
     object: Literal["item"] = pydantic.Field(exclude=True)
-    type: Literal[ItemType.login]
     id: ItemID = pydantic.Field(exclude=True)
-    folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(default=None, alias="organizationId")
-    collection_ids: list[CollectionID] | None = pydantic.Field(default=None, alias="collectionIds")
-    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
-    creation_date: datetime = pydantic.Field(alias="creationDate", exclude=True)
-    revision_date: datetime = pydantic.Field(alias="revisionDate", exclude=True)
-    deleted_date: datetime | None = pydantic.Field(default=None, alias="deletedDate", exclude=True)
+    folder_id: FolderID | None = pydantic.Field(
+        default=None, serialization_alias="folderId", validation_alias="folderId"
+    )
+    organization_id: OrgID | None = pydantic.Field(
+        default=None, serialization_alias="organizationId", validation_alias="organizationId"
+    )
+    collection_ids: list[CollectionID] | None = pydantic.Field(
+        default=None, serialization_alias="collectionIds", validation_alias="collectionIds"
+    )
+    creation_date: datetime = pydantic.Field(
+        serialization_alias="creationDate", validation_alias="creationDate", exclude=True
+    )
+    revision_date: datetime = pydantic.Field(
+        serialization_alias="revisionDate", validation_alias="revisionDate", exclude=True
+    )
+    deleted_date: datetime | None = pydantic.Field(
+        default=None, serialization_alias="deletedDate", validation_alias="deletedDate", exclude=True
+    )
     name: str
-    login: ItemLoginData
+    attachments: list[Any] = pydantic.Field(
+        serialization_alias="attachments", validation_alias="attachments", default_factory=list[Any]
+    )
     notes: str | None
     fields: list[Fields] | None = None
-    reprompt: bool
     favorite: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory", exclude=True)
+    reprompt: bool
 
     @pydantic.field_serializer("reprompt", when_used="json")
     def serialize_reprompt(self, value: bool) -> int:
@@ -215,33 +224,55 @@ class ItemLogin(pydantic.BaseModel, extra="forbid"):
             return value
         return value == 1
 
+    password_history: list[PasswordHistory] | None = pydantic.Field(
+        serialization_alias="passwordHistory", validation_alias="passwordHistory"
+    )  # I don't think this makes sense, but all types seem to have it
 
-class ItemSecureNote(pydantic.BaseModel, extra="forbid"):
-    object: Literal["item"] = pydantic.Field(exclude=True)
+
+class LoginData(BaseStrictModel):
+    uris: list[UriMatch] | None = None
+    username: str | None = None
+    password: pydantic.SecretStr | None = None
+    totp: str | None = None
+    passwordRevisionDate: datetime | None = pydantic.Field(
+        default=None, serialization_alias="passwordRevisionDate", validation_alias="passwordRevisionDate", exclude=True
+    )
+    fido2credentials: list[Any] = pydantic.Field(
+        serialization_alias="fido2Credentials",
+        validation_alias="fido2Credentials",
+        default_factory=list[Any],
+        exclude=True,
+    )
+
+    @pydantic.field_serializer("password", when_used="json")
+    def serialize_secretstr(self, value: pydantic.SecretStr | None) -> str | None:
+        if value is None:
+            return None
+        return value.get_secret_value()
+
+
+class ItemLogin(ItemBase):
+    type: Literal[ItemType.login]
+    login: LoginData
+
+
+class SecureNoteData(BaseStrictModel):
+    type: SecureNoteType
+
+
+class ItemSecureNote(ItemBase):
     type: Literal[ItemType.secure_note] = pydantic.Field(exclude=True)
-    secureNote: dict[str, Any] = pydantic.Field(alias="secureNote")
-    id: ItemID = pydantic.Field(exclude=True)
-    folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(alias="organizationId")
-    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
-    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
-    creation_date: datetime = pydantic.Field(alias="creationDate")
-    revision_date: datetime = pydantic.Field(alias="revisionDate")
-    deleted_date: datetime | None = pydantic.Field(alias="deletedDate")
-    name: str
-    notes: str | None
-    fields: list[Fields] | None = None
-    reprompt: bool
-    favorite: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory")
+    secureNote: SecureNoteData = pydantic.Field(serialization_alias="secureNote", validation_alias="secureNote")
 
 
-class Card(pydantic.BaseModel, extra="forbid"):
-    cardholder_name: str | None = pydantic.Field(alias="cardholderName")
+class Card(BaseStrictModel):
+    cardholder_name: str | None = pydantic.Field(
+        serialization_alias="cardholderName", validation_alias="cardholderName"
+    )
     brand: str | None
     number: pydantic.SecretStr | None
-    exp_month: int | None = pydantic.Field(alias="expMonth")
-    exp_year: int | None = pydantic.Field(alias="expYear")
+    exp_month: int | None = pydantic.Field(serialization_alias="expMonth", validation_alias="expMonth")
+    exp_year: int | None = pydantic.Field(serialization_alias="expYear", validation_alias="expYear")
     code: pydantic.SecretStr | None
 
     @pydantic.field_serializer("number", "code", when_used="json")
@@ -251,29 +282,15 @@ class Card(pydantic.BaseModel, extra="forbid"):
         return value.get_secret_value()
 
 
-class ItemCard(pydantic.BaseModel, extra="forbid"):
-    object: Literal["item"] = pydantic.Field(exclude=True)
+class ItemCard(ItemBase):
     type: Literal[ItemType.card] = pydantic.Field(exclude=True)
-    id: ItemID = pydantic.Field(exclude=True)
-    folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(alias="organizationId")
-    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
-    creation_date: datetime = pydantic.Field(alias="creationDate")
-    revision_date: datetime = pydantic.Field(alias="revisionDate")
-    deleted_date: datetime | None = pydantic.Field(alias="deletedDate")
-    name: str
-    card: Card = pydantic.Field(alias="card")
-    notes: str | None
-    fields: list[Fields] | None = None
-    reprompt: bool
-    favorite: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory")
+    card: Card = pydantic.Field(serialization_alias="card", validation_alias="card")
 
 
-class Identity(pydantic.BaseModel, extra="forbid"):
-    first_name: str | None = pydantic.Field(alias="firstName")
-    middle_name: str | None = pydantic.Field(alias="middleName")
-    last_name: str | None = pydantic.Field(alias="lastName")
+class Identity(BaseStrictModel):
+    first_name: str | None = pydantic.Field(serialization_alias="firstName", validation_alias="firstName")
+    middle_name: str | None = pydantic.Field(serialization_alias="middleName", validation_alias="middleName")
+    last_name: str | None = pydantic.Field(serialization_alias="lastName", validation_alias="lastName")
     title: str | None
     company: str | None
     email: str | None
@@ -283,60 +300,34 @@ class Identity(pydantic.BaseModel, extra="forbid"):
     address3: str | None
     city: str | None
     state: str | None
-    postal_code: str | None = pydantic.Field(alias="postalCode")
+    postal_code: str | None = pydantic.Field(serialization_alias="postalCode", validation_alias="postalCode")
     country: str | None
     ssn: str | None
     username: str | None
-    passport_number: str | None = pydantic.Field(alias="passportNumber")
-    license_number: str | None = pydantic.Field(alias="licenseNumber")
+    passport_number: str | None = pydantic.Field(
+        serialization_alias="passportNumber", validation_alias="passportNumber"
+    )
+    license_number: str | None = pydantic.Field(serialization_alias="licenseNumber", validation_alias="licenseNumber")
 
 
-class ItemIdentity(pydantic.BaseModel, extra="forbid"):
-    object: Literal["item"] = pydantic.Field(exclude=True)
+class ItemIdentity(ItemBase):
     type: Literal[ItemType.identity] = pydantic.Field(exclude=True)
-    identity: Identity = pydantic.Field(alias="identity")
-    id: ItemID = pydantic.Field(exclude=True)
-    folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(alias="organizationId")
-    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
-    creation_date: datetime = pydantic.Field(alias="creationDate")
-    revision_date: datetime = pydantic.Field(alias="revisionDate")
-    deleted_date: datetime | None = pydantic.Field(alias="deletedDate")
-    name: str
-    notes: str | None
-    fields: list[Fields] | None = None
-    reprompt: bool
-    favorite: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory")
+    identity: Identity = pydantic.Field(serialization_alias="identity", validation_alias="identity")
 
 
-class SSHKey(pydantic.BaseModel, extra="forbid"):
-    private_key: pydantic.SecretStr = pydantic.Field(alias="privateKey")
-    public_key: str = pydantic.Field(alias="publicKey")
-    fingerprint: str = pydantic.Field(alias="keyFingerprint")
+class SSHKey(BaseStrictModel):
+    private_key: pydantic.SecretStr = pydantic.Field(serialization_alias="privateKey", validation_alias="privateKey")
+    public_key: str = pydantic.Field(serialization_alias="publicKey", validation_alias="publicKey")
+    fingerprint: str = pydantic.Field(serialization_alias="keyFingerprint", validation_alias="keyFingerprint")
 
 
-class ItemSSH(pydantic.BaseModel, extra="forbid"):
-    object: Literal["item"] = pydantic.Field(exclude=True)
+class ItemSSH(ItemBase):
     type: Literal[ItemType.ssh] = pydantic.Field(exclude=True)
-    id: ItemID = pydantic.Field(exclude=True)
-    folder_id: FolderID | None = pydantic.Field(alias="folderId")
-    organization_id: OrgID | None = pydantic.Field(default=None, alias="organizationId")
-    attachments: list[Any] = pydantic.Field(alias="attachments", default_factory=list[Any])
-    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds")
-    creation_date: datetime = pydantic.Field(alias="creationDate")
-    revision_date: datetime = pydantic.Field(alias="revisionDate")
-    deleted_date: datetime | None = pydantic.Field(default=None, alias="deletedDate")
-    name: str
-    ssh_key: SSHKey = pydantic.Field(alias="sshKey")
-    notes: str | None
-    fields: list[Fields] | None = None
-    favorite: bool
-    reprompt: bool
-    password_history: list[PasswordHistory] | None = pydantic.Field(alias="passwordHistory", exclude=True)
+
+    ssh_key: SSHKey = pydantic.Field(serialization_alias="sshKey", validation_alias="sshKey")
 
 
-Items = Annotated[
+Item = Annotated[
     Union[ItemLogin, ItemSecureNote, ItemCard, ItemIdentity, ItemSSH], pydantic.Field(discriminator="type")
 ]
 
@@ -344,10 +335,16 @@ Items = Annotated[
 class ItemLoginNew(pydantic.BaseModel):
     type: Literal[ItemType.login] = ItemType.login
     name: str
-    folder_id: FolderID | None = pydantic.Field(alias="folderId", default=None)
-    organization_id: OrgID | None = pydantic.Field(alias="organizationId", default=None)
-    collection_ids: list[CollectionID] | None = pydantic.Field(alias="collectionIds", default=None)
-    login: ItemLoginData
+    folder_id: FolderID | None = pydantic.Field(
+        default=None, serialization_alias="folderId", validation_alias="folderId"
+    )
+    organization_id: OrgID | None = pydantic.Field(
+        serialization_alias="organizationId", validation_alias="organizationId", default=None
+    )
+    collection_ids: list[CollectionID] | None = pydantic.Field(
+        serialization_alias="collectionIds", validation_alias="collectionIds", default=None
+    )
+    login: LoginData
     notes: str | None = None
     fields: list[Fields] | None = None
     reprompt: bool = False

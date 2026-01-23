@@ -14,9 +14,9 @@ from bitwarden_rest_client.models import (
     FolderID,
     FolderNew,
     GeneratePasswordResponse,
+    Item,
     ItemID,
     ItemLoginNew,
-    Items,
     ItemType,
     ListResponse,
     LockResponse,
@@ -157,17 +157,21 @@ class BitwardenClient:
 
     # region Items
 
-    def item_create(self, item: ItemLoginNew) -> Items:
-        return self._post(Items, "/object/item", payload=item)  # type: ignore[arg-type]
+    def item_create(self, item: ItemLoginNew) -> Item:
+        return self._post(Item, "/object/item", payload=item)  # type: ignore[arg-type]
 
-    def item_delete(self, item_id: ItemID) -> bool:
+    def item_delete(self, item_id: ItemID | Item) -> bool:
+        if not isinstance(item_id, str):
+            item_id = item_id.id
         return self._delete(f"/object/item/{item_id}")  # type: ignore[arg-type]
 
-    def item_get(self, item_id: ItemID) -> Items:
-        return self._get(Items, f"/object/item/{item_id}")  # type: ignore[arg-type]
+    def item_get(self, item_id: ItemID | Item) -> Item:
+        if not isinstance(item_id, str):
+            item_id = item_id.id
+        return self._get(Item, f"/object/item/{item_id}")  # type: ignore[arg-type]
 
-    def item_update(self, item: Items) -> Items:
-        return self._put(Items, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
+    def item_update(self, item: Item) -> Item:
+        return self._put(Item, f"/object/item/{item.id}", payload=item)  # type: ignore[arg-type]
 
     def item_list(
         self,
@@ -178,7 +182,7 @@ class BitwardenClient:
         item_type: ItemType | None = None,
         trash: bool = False,
         search: str | None = None,
-    ) -> list[Items]:
+    ) -> list[Item]:
         params = httpx.QueryParams()
         if org_id is not None:
             params = params.set("organizationId", org_id)
@@ -192,7 +196,7 @@ class BitwardenClient:
             params = params.set("trash", "true")
         if search is not None:
             params = params.set("search", search)
-        response = self._get(ListResponse[Items], "/list/object/items", params=params)
+        response = self._get(ListResponse[Item], "/list/object/items", params=params)
         items = response.data
         if item_type is not None:
             items = [item for item in items if item.type == item_type]

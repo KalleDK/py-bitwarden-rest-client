@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 
 from bitwarden_rest_client._sync.client import BitwardenClient
-from bitwarden_rest_client.models import FieldHidden, ItemLoginData, ItemLoginNew, URIMatch, UriMatch
+from bitwarden_rest_client.models import FieldHidden, FolderID, ItemLoginNew, ItemType, LoginData, URIMatch, UriMatch
 
 app = typer.Typer()
 console = Console()
@@ -103,6 +103,14 @@ class Password(enum.StrEnum):
     GENERATE = "?"
 
 
+@login_group.command("list")
+def login_list(folder: Annotated[str | None, typer.Option("--folder", "-f")] = None):
+    folder_id = None if folder is None else FolderID(folder)
+    with BitwardenClient.session() as session:
+        response = session.item_list(item_type=ItemType.login, folder_id=folder_id)
+        console.print(response)
+
+
 @login_group.command("create")
 def login_create(
     name: str,
@@ -142,12 +150,12 @@ def login_create(
         response = session.item_create(
             ItemLoginNew(
                 name=name,
-                login=ItemLoginData(
+                login=LoginData(
                     username=username,
                     password=_password,
                     uris=uris,
                 ),
-                folderId=folder_id,
+                folder_id=folder_id,
             )
         )
 
